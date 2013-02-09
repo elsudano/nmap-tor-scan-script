@@ -6,10 +6,10 @@ Este es un script que utiliza diferentes herramientas de linux para poder realiz
 Que Hace
 ==========
 
-Lo primero y mas importante es que realiza una verificacion de que tenemos todas las herramientas necesarias
+Lo primero y mas importante es que realiza una verificación de que tenemos todas las herramientas necesarias
 Nmap, Zenity, Tor, Vidalia, Privoxy.
-Luego comprobamos y configuramos automaticamente los ficheros del sistema para que la conexión sea segura
-y finalmente mostramos una interface grafica para el escaneo de posibles vulnerabilidades en los sistemas.
+Luego comprobamos y configuramos automáticamente los ficheros del sistema para que la conexión sea segura
+y finalmente mostramos una interfaces gráfica para el escaneo de posibles vulnerabilidades en los sistemas.
 
 Como funciona
 =============

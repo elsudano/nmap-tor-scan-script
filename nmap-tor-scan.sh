@@ -29,68 +29,113 @@ FICHEROS_CONFIG=(privoxy.conf proxychains.conf torrc vidalia.conf)
 # ~/.vidalia/torrc		Fichero de configuración para la red de privacidad
 # ~.vidalia/vidalia.conf	Fichero de configuración de la interfaz gráfica
 
-function comprobarbinarios(){
-  binOK=0
-  for fichero in ${BINARIOS[@]}
-  do
-    for directorio in $(echo $PATH | tr ':' ' ')
-    do
-      if [ -f $directorio'/'$fichero ]; then
-	#kdialog --title "Ficheros..." --msgbox "el fichero "$fichero" existe"
-	binOK=$((binOK+1))
-	break
-      fi
-    done
-  done
-  if [[ ${#BINARIOS[@]} -eq "$binOK" ]]; then
-    kdialog --title "Binarios necesarios " --msgbox "La comprobación de los binarios ha sido un éxito"
-  else
-    kdialog --title "Binarios necesarios " --msgbox "Uno de los binarios necesarios para ejecutar este script no se ha encontrado\nen su sistema por favor revise la siguiente lista para ver cual es el que falta\n\n${BINARIOS[*]}\n\nTenga en cuenta que estos binarios tienen que estar en su #PATH\npara que el script pueda encontrarlos"
-    exit 1
-  fi
-}
-
 function buscar(){
-  echo $(find / -name $1 | tee >(zenity --progress --pulsate))
+  if [ $1 != "" ]; then
+    ref=$(kdialog --progressbar "Buscando..." 3)
+    sleep 2
+    qdbus ${ref} org.kde.kdialog.ProgressDialog.setLabelText "Buscando ficheros necesarios..."
+    qdbus ${ref} Set org.kde.kdialog.ProgressDialog value 1
+    local retval=$(find / -name $1)    
+    qdbus ${ref} Set org.kde.kdialog.ProgressDialog value 2
+    sleep 2
+    qdbus ${ref} Set org.kde.kdialog.ProgressDialog value 3
+    qdbus ${ref} org.kde.kdialog.ProgressDialog.close
+  else
+    kdialog --title "Error " --error "La función de búsqueda no ha funcionado bien"
+  fi
+  echo $retval
 }
 
-function comprobarbinarios2(){
-  binOK=0
+function comprobarbinarios(){
+  local binOK=0
+  local retval=0
   for fichero in ${BINARIOS[@]}
   do
-  echo $(find / -name  $fichero | tee >(zenity --progress --pulsate))
-    #if [ -f $(find / -name  $fichero | tee >(zenity --progress --pulsate)) ]; then
-    #  kdialog --title "Fichero encontrado " --msgbox "El fichero $fichero se ha encontrado en esta dirección $(buscar $fichero)"
-    #  binOK=$((binOK+1))
-    #fi
+    dfb=($(buscar $fichero)) # variable dfb = directorios de ficheros binarios
+    if [[ ${#dfb[@]} -gt "1" ]]; then
+      for opcion in ${dfb[@]}
+      do
+	local opciones="$opciones $opcion $opcion false "
+      done
+      seleccion=$(kdialog --title "Elija una opción " --radiolist " Elija donde se encuentra el\nfichero: $fichero en su sistema " $opciones)
+      if [[ $? = "0" ]]; then
+	if [ -x $seleccion ]; then
+	  SITUACION_BINARIOS=("${SITUACION_BINARIOS[*]} $seleccion\n")
+	  binOK=$((binOK+1))
+	else
+	  kdialog --title "Advertencia " --sorry "El fichero $fichero no es un binario\npor favor vuelva a ejecutar el script\ny seleccione un fichero correcto"
+	  exit 1
+	fi
+      else
+	kdialog --title "Advertencia " --sorry "Si el fichero $fichero no estaba en la lista anterior\nsignifica que no se encuentra en su\nsistema y deberá instalarlo"
+	exit 1
+      fi
+      opciones=""
+    elif [[ ${#dfb[@]} -eq "1" ]] && [ -f ${dfb[0]} ]; then
+      kdialog --title "Fichero encontrado " --passivepopup "El fichero $fichero se ha encontrado en esta dirección ${dfb[0]}" 5
+      SITUACION_BINARIOS=("${SITUACION_BINARIOS[*]} ${dfb[0]}\n")
+      binOK=$((binOK+1))
+    else
+      kdialog --title "Fichero NO encontrado " --passivepopup "El fichero $fichero no se ha encontrado en su sistema\npor favor instalelo y vuelva a ejecutar este script" 5
+      binarios_no_encontrados="$binarios_no_encontrados $fichero"
+      retval= "1"
+    fi
   done
   if [[ ${#BINARIOS[@]} -eq "$binOK" ]]; then
-    kdialog --title "Binarios necesarios " --msgbox "La comprobación de los binarios ha sido un éxito"
+    kdialog --title "Binarios necesarios " --passivepopup "La comprobación de los binarios ha sido un éxito" 5
   else
-    kdialog --title "Binarios necesarios " --msgbox "Uno de los binarios necesarios para ejecutar este script no se ha encontrado\nen su sistema por favor revise la siguiente lista para ver cual es el que falta\n\n${BINARIOS[*]}\n\nTenga en cuenta que estos binarios tienen que estar en su #PATH\npara que el script pueda encontrarlos"
+    kdialog --title "Binarios necesarios " --msgbox "Uno o varios de los binarios necesarios para ejecutar este script no
+se ha encontrado en su sistema por favor instale los siguientes binarios
+y vuelva a ejecutar este script\n
+$binarios_no_encontrados"
     exit 1
   fi
+  return $retval
+}
+
+function configuracion(){
+  local retval=0
+  case $(kdialog --title "Configuración" --menu " " reiniciar "Reiniciar los valores por defecto" mirar "Ver los valores almacenados" volver "Volver") in
+    reiniciar)
+      rm $(pwd)/first
+      configuracion;;
+    mirar)
+      cat $(pwd)/first
+      configuracion;;
+    volver)
+      main;;
+  esac
+  return $retval
 }
 
 function main(){
   # esta es la parte de comprobación de binarios
   # aquí es donde tenemos que comprobar que todos los binarios están en el sistema y que se pueden ejecutar
-  
-  comprobarbinarios2
-  kdialog --title "Fichero encontrado " --msgbox "El fichero ${FICHEROS_CONFIG[1]} se ha encontrado en esta dirección $(buscar ${FICHEROS_CONFIG[1]})"
-  
-  
+
+  if [ -e $(pwd)/first ]; then
+    if [ $(cat $(pwd)/first) != "1" ]; then
+      comprobarbinarios
+      if [[ $? -eq "0" ]]; then
+	echo "1" >first
+      fi
+    fi
+  else
+    echo "0" >first
+    main
+  fi
+  echo ${SITUACION_BINARIOS[*]}
   #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   case $(kdialog --title "Aplicación de escaneo a través de la red Tor" --menu "Elija una opción" escanear "Escanear" configuracion "Configuración" salir "Salir") in
       escanear)
 	exit;;
       configuracion)
-	kdialog --title "Configuracion..." --msgbox "Ventana de Configuración"
-	exit;;
+	configuracion
+	echo $?;;
       salir)
 	if [ $(zenity --question --title "Pregunta" --text "Quiere salir de la aplicación"; echo $?) -eq 1 ]; then
 	  main
 	fi;;
   esac
+  exit 0
 }
 main

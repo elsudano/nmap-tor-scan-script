@@ -14,7 +14,7 @@ y finalmente mostramos una interfaces gráfica para el escaneo de posibles vulne
 Como funciona
 =============
 
-ERRORES
+Errores
 =======
 
 Licencia

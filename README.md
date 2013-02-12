@@ -7,7 +7,7 @@ Que Hace
 ==========
 
 Lo primero y mas importante es que realiza una verificación de que tenemos todas las herramientas necesarias
-Nmap, Zenity, Tor, Vidalia, Privoxy.
+Nmap, Zenity, Tor, Vidalia, Privoxy y Proxychains.
 Luego comprobamos y configuramos automáticamente los ficheros del sistema para que la conexión sea segura
 y finalmente mostramos una interfaces gráfica para el escaneo de posibles vulnerabilidades en los sistemas.
 
